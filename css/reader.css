@@ -1,0 +1,830 @@
+/* ========== 阅读器页面 ========== */
+
+/* 上下栏尺寸集中在这里 —— 想整体"高一点/矮一点"只改这几个数就够了，
+   不用去翻各个选择器。 */
+:root {
+  --bar-pad-x: 10px;            /* 左右内边距 */
+  --bar-header-pad-y: 5px;      /* 顶部栏上/下内边距 */
+  --bar-header-min-h: 42px;     /* 顶部栏最小高度 */
+  --bar-icon-size: 1.25rem;     /* 顶部图标字号 */
+  --bar-icon-pad: 5px 9px;      /* 顶部图标内边距 */
+  --bar-back-size: 1.7rem;      /* 返回箭头 ‹ 字号 */
+  --bar-footer-pad-y: 7px;      /* 底部栏内边距 */
+  --bar-nav-font: 0.8rem;       /* 上一章/下一章 字号 */
+  --bar-nav-pad: 5px 2px;
+  --bar-slider-h: 22px;         /* 章节进度条高度 */
+  --bar-tool-icon: 20px;        /* 目录/白天/设置 图标大小 */
+  --bar-tool-font: 0.74rem;     /* 它们的文字大小 */
+  --bar-tool-pad: 6px 2px;
+  --bar-tool-gap: 6px;          /* 两行之间的间距 */
+}
+
+/* 顶部栏：始终"浮"在正文之上（position: absolute），不占布局空间。
+   这样显示/隐藏上下栏时，正文区域大小**完全不变**，
+   不会出现"一点屏幕文字就被挤小"的跳动。
+   只留一个返回箭头 + 右侧图标，不显示书名。 */
+.reader-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--bar-header-pad-y) var(--bar-pad-x);
+  padding-top: calc(var(--bar-header-pad-y) + var(--safe-top));
+  min-height: var(--bar-header-min-h);
+  /* 必须是不透明背景，否则下面的文字会透出来 */
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s;
+}
+
+.reader-header.hidden {
+  transform: translateY(-100%);
+}
+
+/* 阅读器里的图标按钮（书架上的 .btn-icon 保持不变） */
+.reader-header .btn-icon {
+  font-size: var(--bar-icon-size);
+  padding: var(--bar-icon-pad);
+  line-height: 1;
+}
+
+/* 返回键：只用 "‹" 一个符号 */
+.btn-back {
+  font-size: var(--bar-back-size);
+  line-height: 1;
+  padding: 0 10px 3px;
+  color: var(--accent);
+  font-weight: 300;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 返回箭头比文字符号细，单独加粗一点才压得住 */
+.btn-back svg {
+  width: 1em;
+  height: 1em;
+  stroke-width: 2.2;
+  display: block;
+}
+
+/* 右侧一组图标 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 书名不再显示 —— HTML 里它带 .sr-only，视觉上不可见但读屏软件仍能读到 */
+
+/* 仅供读屏软件：视觉上不占任何空间（display:none 会让读屏软件也读不到，所以用裁剪法） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 正文：上下栏都脱离文档流后，这里自然占满整屏，尺寸恒定 */
+.reader-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+  word-break: break-all;
+  position: relative;
+  /* 滚到顶/底时不要把过卷传给文档，否则会触发 Safari 的下拉刷新 */
+  overscroll-behavior: contain;
+  /* 保留纵向滚动，但关掉双击缩放 */
+  touch-action: manipulation;
+}
+
+/* 正文内层：滚动模式下就是普通块 */
+.paged-inner {
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.reader-content p {
+  margin-bottom: 0.8em;
+  text-indent: 2em;
+}
+
+.reader-content h1,
+.reader-content h2,
+.reader-content h3 {
+  text-align: center;
+  margin: 1em 0;
+  text-indent: 0;
+}
+
+.reader-loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-secondary);
+}
+
+/* 加载失败提示：要能让用户看懂并能采取行动 */
+.loading-error {
+  padding: 60px 24px;
+  text-align: center;
+  line-height: 1.9;
+}
+.loading-error-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.loading-error-msg {
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.loading-error-hint {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* 内容被截断时的提示 */
+.render-notice {
+  color: var(--text-secondary) !important;
+  font-size: 0.85em !important;
+  text-indent: 0 !important;
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  margin: 1.2em 0;
+  opacity: 0.85;
+}
+
+/* ========== 左右翻页模式 ==========
+   原理：把正文排成 CSS 多列，每列正好一屏宽，
+   然后用 translateX 横向平移来"翻页"。 */
+.reader-content.paged {
+  overflow: hidden;
+}
+
+.reader-content.paged .paged-inner {
+  height: 100%;
+  padding: 16px 0;          /* 水平内边距交给子元素，避免干扰列宽计算 */
+  column-fill: auto;
+  column-gap: 0;            /* 由 JS 设置为视口宽度的百分比 */
+  /* 只动 transform：这是唯一能完全交给合成器（GPU）处理的属性，
+     不触发重排/重绘，翻页才不会掉帧。
+     backface-visibility 防止某些机型在动画边缘闪白。 */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);   /* 提前建好合成层，避免首帧才提升造成卡顿 */
+  transition: transform 0.2s ease;   /* 未挂动画模式类时的兜底，行为与改动前一致 */
+}
+
+/* ---------- 翻页动画三档：'slide' 滑动 / 'flip' 仿真 / 'none' 无 ----------
+   模式类由 js/reader.js 的 applyAnimUI() 挂在 #reader-content 上。
+   注意：下面的 .no-anim 规则必须排在模式规则之后（见文件更下方），
+   否则重新分页时用的临时禁用会被模式规则覆盖。 */
+.reader-content.paged.anim-slide .paged-inner {
+  /* 缓出曲线：起步快、收尾稳，手感比线性顺，也更快"落定"
+     （动画时间越短，越不容易和后台的数据库写入抢主线程） */
+  transition: transform 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.reader-content.paged.anim-none .paged-inner {
+  transition: none;
+}
+
+/* 仿真模式下底层只负责瞬间换页，动画由翻页层演 */
+.reader-content.paged.anim-flip .paged-inner {
+  transition: none;
+}
+
+/* 覆盖模式同理：底层立刻切到目标页并停住（它会原地不动地被露出来），
+   动画全部由翻页层上的克隆页完成 —— 这就是"只有一页在动" */
+.reader-content.paged.anim-cover .paged-inner {
+  transition: none;
+}
+
+/* 透视：没有它 rotateY 只是横向压扁，没有 3D 观感 */
+.reader-content.paged.anim-flip {
+  perspective: 1800px;
+}
+
+/* 每个块级子元素自己留左右边距，这样每一列都有正常页边距 */
+.reader-content.paged .paged-inner > * {
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+
+/* 翻动时不加过渡，避免快速连点时动画堆积。
+   必须排在 .anim-slide / .anim-none / .anim-flip 之后，才能盖住它们。 */
+.reader-content.paged .paged-inner.no-anim {
+  transition: none;
+}
+
+/* 跟手拖动中：过渡必须完全关掉，位移才会即时贴着手指走。
+   同样要排在所有模式规则之后。 */
+.reader-content.paged .paged-inner.dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+/* ========== 仿真翻页层（'flip'） ==========
+   由 js/reader.js 动态插入 #reader-content 内：
+   <div class="page-flip-layer">
+     <div class="page-flip-shade"></div>   ← 扫过新页的阴影
+     <div class="page-flip-page"></div>    ← 翻动的那一页（内容为 #paged-inner 的克隆）
+   </div>
+   底层 #paged-inner 始终只做 translateX，负责"换页"；这一层只负责"翻"的观感。 */
+.page-flip-layer {
+  display: none;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 4;
+  pointer-events: none;     /* 不挡点击区域，翻页中途也能继续点 */
+}
+
+.page-flip-layer.active {
+  display: block;
+}
+
+.page-flip-shade {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1;
+  opacity: 0;
+  background: linear-gradient(to right,
+              rgba(0, 0, 0, 0.45) 0%,
+              rgba(0, 0, 0, 0.10) 42%,
+              rgba(0, 0, 0, 0) 75%);
+}
+
+.page-flip-shade.flip-shade {
+  animation: pageFlipShade 0.46s ease-out forwards;
+}
+
+/* 翻动的那一页：以左边缘（书脊）为轴旋转 */
+.page-flip-page {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2;
+  overflow: hidden;
+  background: var(--bg);
+  transform-origin: left center;
+  backface-visibility: hidden;
+  will-change: transform;
+  box-shadow: 0 0 22px rgba(0, 0, 0, 0.35);
+}
+
+/* 右侧页边的"纸厚"高光 */
+.page-flip-page::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 8px;
+  background: linear-gradient(to left,
+              rgba(0, 0, 0, 0.14) 0%,
+              rgba(255, 255, 255, 0.28) 60%,
+              rgba(0, 0, 0, 0) 100%);
+}
+
+.page-flip-page.flip-forward {
+  animation: pageFlipForward 0.46s cubic-bezier(0.36, 0.05, 0.22, 1) forwards;
+}
+
+.page-flip-page.flip-backward {
+  animation: pageFlipBackward 0.46s cubic-bezier(0.36, 0.05, 0.22, 1) forwards;
+}
+
+/* 前进：当前页像被捏住右边缘向左翻走。越过 -90° 后正面已不可见，
+   所以直接隐去（避免看到镜像的背面文字）。 */
+@keyframes pageFlipForward {
+  0%   { transform: rotateY(0deg);    opacity: 1; }
+  52%  { transform: rotateY(-92deg);  opacity: 1; }
+  53%  { transform: rotateY(-94deg);  opacity: 0; }
+  100% { transform: rotateY(-180deg); opacity: 0; }
+}
+
+/* 后退：上一页从左侧翻回来、落到页面上 */
+@keyframes pageFlipBackward {
+  0%   { transform: rotateY(-180deg); opacity: 0; }
+  47%  { transform: rotateY(-90deg);  opacity: 0; }
+  48%  { transform: rotateY(-86deg);  opacity: 1; }
+  100% { transform: rotateY(0deg);    opacity: 1; }
+}
+
+/* 阴影扫过：翻动前半程压暗新页靠近书脊的一侧，后半程褪去 */
+@keyframes pageFlipShade {
+  0%   { opacity: 0; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* ---------- 覆盖（'cover'）：只有"当前页"一个元素在动 ----------
+   起点/终点由 JS 通过 --cover-from / --cover-to 写入（单位 px），
+   因为位置取决于当前页序号与步长，写不进静态 CSS。
+   前进：当前页从原位滑到左移一步的位置 → 露出底下已就位的新页
+   后退：当前页从原位滑到右移一步的位置 → 露出底下的上一页
+   两种方向共用同一个 keyframes（只靠两个变量区分）。 */
+.page-flip-page.cover-anim {
+  animation: pageCover 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes pageCover {
+  from { transform: translateX(var(--cover-from, 0px)); }
+  to   { transform: translateX(var(--cover-to, 0px)); }
+}
+
+/* 覆盖层必须不透明：它要真正"盖住"底下的相邻页，否则两页文字会叠在一起。
+   拖动中（cover-drag）不加动画，位移完全由手指驱动。 */
+.page-flip-page.page-opaque {
+  background: var(--bg);
+}
+
+.page-flip-page.cover-drag {
+  animation: none;
+}
+
+/* 仿真翻页层里放的是 #paged-inner 的克隆，它自带 will-change/translate3d；
+   覆盖模式靠它做跟手位移，这里确保拖动中不会有过渡干扰 */
+.page-flip-page.cover-drag .paged-inner {
+  transition: none;
+}
+
+/* ========== 翻页点击区域 ========== */
+.tap-zones {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: none;
+  z-index: 5;
+  /* 翻页模式下由 JS 全权处理手势，因此完全关掉浏览器手势：
+     这样"连点放大"和"下拉刷新"都不会在阅读区发生。
+     注意不能用 manipulation —— 那样浏览器仍可能把手势判定为原生平移，
+     并给我们发 touchcancel 而不是 touchend，滑动翻页会时灵时不灵。 */
+  touch-action: none;
+}
+
+.tap-zones.active {
+  display: flex;
+}
+
+.tap-zone {
+  height: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-prev { width: 30%; }
+.tap-center { width: 40%; }
+.tap-next { width: 30%; }
+
+/* ========== 阅读器底部 ========== */
+/* 与顶部栏一样：始终浮在正文之上（position: absolute），不占布局空间，
+   所以显示/隐藏都不会改变正文区域的大小。
+   z-index 要高于 .tap-zones（5），否则按钮会被翻页点击层挡住点不动。 */
+.reader-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  padding: var(--bar-footer-pad-y) var(--bar-pad-x);
+  padding-bottom: calc(var(--bar-footer-pad-y) + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  /* 必须是不透明背景，才能真正"盖住"下面的文字 */
+  background: var(--bg);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s;
+}
+
+.reader-footer.hidden {
+  transform: translateY(100%);
+}
+
+/* --- 第一行：上一章 ｜ 进度条 ｜ 下一章 --- */
+.foot-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-text-btn {
+  flex-shrink: 0;
+  font-size: var(--bar-nav-font);
+  color: var(--accent);
+  padding: var(--bar-nav-pad);
+  min-width: 46px;
+}
+
+.nav-text-btn:disabled {
+  color: var(--text-secondary);
+  opacity: 0.45;
+}
+
+/* 章节进度条 */
+.chapter-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--bar-slider-h);
+  background: transparent;
+  outline: none;
+  margin: 0;
+}
+
+.chapter-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track, rgba(128, 128, 128, 0.25));
+}
+
+.chapter-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.chapter-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track, rgba(128, 128, 128, 0.25));
+}
+
+.chapter-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* --- 第二行：目录 / 白天 / 阅读设置 --- */
+.foot-tools {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  margin-top: var(--bar-tool-gap);
+}
+
+.tool-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--bar-tool-pad);
+  border-radius: 10px;
+  font-size: var(--bar-tool-font);
+  color: var(--text-secondary);
+  transition: color 0.15s, background 0.15s;
+}
+
+.tool-btn:active {
+  background: var(--accent-soft, rgba(128, 128, 128, 0.12));
+}
+
+.tool-btn.active {
+  color: var(--accent);
+}
+
+.tool-icon {
+  width: var(--bar-tool-icon);
+  height: var(--bar-tool-icon);
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 白天/夜间图标：默认显示月亮（当前是浅色→点它去夜间）；
+   处于夜间主题时显示太阳（点它回白天），与参考 App 的行为一致。 */
+.tool-btn .icon-sun { display: none; }
+.tool-btn .icon-moon { display: block; }
+.tool-btn.is-dark .icon-sun { display: block; }
+.tool-btn.is-dark .icon-moon { display: none; }
+
+/* ========== 目录 / 书摘 弹窗 ========== */
+.toc-panel {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 110;
+}
+
+.toc-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.toc-drawer {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-radius: 18px 18px 0 0;
+  padding-bottom: var(--safe-bottom);
+  animation: slideUp 0.28s ease;
+  overflow: hidden;
+}
+
+.toc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+
+.toc-cover {
+  width: 42px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: linear-gradient(140deg, var(--accent-light), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.toc-cover svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+/* 按格式给书本图标一点色调差，既保留格式提示又不显得花 */
+.toc-cover .fmt-epub { color: #d6f6ec; }
+.toc-cover .fmt-pdf  { color: #ffe2e2; }
+.toc-cover .fmt-docx { color: #e3eaff; }
+.toc-cover .fmt-txt  { color: #ffffff; }
+
+.toc-book-title {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+/* 目录 / 书摘 分页签 */
+.toc-tabs {
+  display: flex;
+  gap: 22px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.toc-tab {
+  position: relative;
+  padding: 8px 2px 10px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.toc-tab.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.toc-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.toc-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.toc-order-btn {
+  font-size: 0.78rem;
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: var(--accent-soft, rgba(128, 128, 128, 0.12));
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.toc-order-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 章节 / 书摘 列表 */
+.toc-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 4px 0 16px;
+}
+
+.toc-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 18px;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.toc-item:active {
+  background: var(--accent-soft, rgba(128, 128, 128, 0.12));
+}
+
+.toc-item .toc-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 当前正在读的章节 */
+.toc-item.current {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-soft, rgba(128, 128, 128, 0.12));
+}
+
+.toc-item.current .toc-item-title::after {
+  content: '●';
+  font-size: 0.6rem;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* ========== 阅读器菜单 ========== */
+.reader-menu {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 100;
+}
+
+.menu-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+}
+
+.menu-dialog {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  padding-bottom: calc(32px + var(--safe-bottom));
+  animation: slideUp 0.3s ease;
+}
+
+.menu-dialog h3 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.menu-section {
+  margin-bottom: 16px;
+}
+
+.menu-section label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.menu-section input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.menu-section span {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ========== 主题选项 ========== */
+.theme-options {
+  display: flex;
+  gap: 10px;
+}
+
+.theme-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.theme-btn.active {
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.theme-btn[data-theme="warm"]  { background: #f5f0e8; color: #3d3226; }
+.theme-btn[data-theme="white"] { background: #ffffff; color: #333; }
+.theme-btn[data-theme="dark"]  { background: #2a2a2a; color: #ccc; }
+.theme-btn[data-theme="green"] { background: #e8f0e3; color: #3d4a38; }
+
+/* ========== 主题应用 ========== */
+body.theme-warm  { --bg: #f5f0e8; --bg-card: #fffbf5; --text: #3d3226; --text-secondary: #8b7355; --border: #d4c5b2; }
+body.theme-white { --bg: #f8f8f8; --bg-card: #ffffff; --text: #333; --text-secondary: #888; --border: #e0e0e0; }
+body.theme-dark  { --bg: #1a1a1a; --bg-card: #2a2a2a; --text: #ccc; --text-secondary: #999; --border: #444; }
+body.theme-green { --bg: #e8f0e3; --bg-card: #f4faf0; --text: #3d4a38; --text-secondary: #6b7d63; --border: #c8d8c0; }
+
+/* ========== 书签页面 ========== */
+.bookmark-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.bookmark-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.bookmark-item:active {
+  opacity: 0.7;
+}
+
+.bookmark-info {
+  flex: 1;
+}
+
+.bookmark-book {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.bookmark-preview {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+.bookmark-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-left: 12px;
+}
+
+.bookmark-delete {
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  color: #c75b5b;
+}
+
+.bookmark-delete svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}

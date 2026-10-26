@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="纯净阅读">
+  <meta name="theme-color" content="#2f7d70">
+  <title>纯净阅读</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/shelf.css">
+  <link rel="stylesheet" href="./css/reader.css">
+</head>
+<body>
+  <!-- 应用容器 -->
+  <div id="app">
+    <!-- 书架页面 -->
+    <div id="page-shelf" class="page active">
+      <header class="shelf-header">
+        <h1><span class="brand-mark" data-icon="library" data-icon-size="21"></span><span>纯净阅读</span></h1>
+        <div class="header-actions">
+          <button id="btn-bookmarks" class="btn-icon" data-icon="bookmark" data-icon-size="22" title="我的书签" aria-label="我的书签"></button>
+          <button id="btn-import" class="btn-icon" data-icon="import" data-icon-size="22" title="导入书籍" aria-label="导入书籍"></button>
+        </div>
+      </header>
+
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="搜索书名、作者..." autocomplete="off">
+        <button id="btn-search-clear" class="btn-clear" style="display:none" data-icon="close" data-icon-size="15" aria-label="清空搜索"></button>
+      </div>
+
+      <!-- 分类标签 -->
+      <div class="category-tabs" id="category-tabs">
+        <button class="cat-tab active" data-cat="all">全部</button>
+        <button class="cat-tab" data-cat="favorites"><span class="tab-icon" data-icon="star" data-icon-size="15"></span>收藏</button>
+        <button class="cat-tab" data-cat="uncategorized">未分类</button>
+      </div>
+
+      <!-- 排序方式（由 js/shelf.js 接管，样式见 css/shelf.css） -->
+      <div class="sort-tabs" id="sort-tabs">
+        <button class="sort-btn active" data-sort="recent">最近阅读</button>
+        <button class="sort-btn" data-sort="title">书名</button>
+        <button class="sort-btn" data-sort="added">导入时间</button>
+        <button class="sort-btn" data-sort="progress">阅读进度</button>
+      </div>
+
+      <!-- 书籍列表 -->
+      <div class="book-grid" id="book-grid">
+        <div class="empty-state">
+          <div class="empty-icon" data-icon="openBook" data-icon-size="62"></div>
+          <p>书架空空如也</p>
+          <p class="empty-hint">点击右上角导入你的第一本书吧</p>
+        </div>
+      </div>
+
+      <!-- 导入面板 -->
+      <div class="import-panel" id="import-panel" style="display:none">
+        <div class="import-overlay"></div>
+        <div class="import-dialog">
+          <h3>导入书籍</h3>
+          <div class="import-options">
+            <label class="import-btn">
+              <span class="import-btn-icon" data-icon="file" data-icon-size="19"></span>选择文件
+              <input type="file" id="file-input" accept=".txt,.epub,.pdf,.docx,.zip,.mobi,.azw3" multiple hidden>
+            </label>
+            <label class="import-btn" id="btn-zip">
+              <span class="import-btn-icon" data-icon="archive" data-icon-size="19"></span>压缩包（自动解压）
+              <input type="file" id="zip-input" accept=".zip" multiple hidden>
+            </label>
+          </div>
+          <p class="import-hint">支持 TXT / EPUB / PDF / DOCX / ZIP</p>
+          <button class="btn-close" id="btn-import-close">关闭</button>
+          <div class="import-progress" id="import-progress" style="display:none">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <p id="progress-text"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阅读器页面 -->
+    <div id="page-reader" class="page">
+      <header class="reader-header" id="reader-header">
+        <button id="btn-back" class="btn-icon btn-back" data-icon="chevronLeft" data-icon-size="26" aria-label="返回书架"></button>
+        <span class="reader-title sr-only" id="reader-title">书名</span>
+        <div class="header-right">
+          <button id="btn-bookmark" class="btn-icon" data-icon="bookmark" data-icon-size="21" aria-label="书签"></button>
+          <button id="btn-reader-menu" class="btn-icon" data-icon="menu" data-icon-size="22" aria-label="阅读设置"></button>
+        </div>
+      </header>
+
+      <div class="reader-content" id="reader-content">
+        <div class="paged-inner" id="paged-inner">
+          <div class="reader-loading">加载中...</div>
+        </div>
+      </div>
+
+      <!-- 左右翻页时的点击区域提示（仅翻页模式显示） -->
+      <div class="tap-zones" id="tap-zones">
+        <div class="tap-zone tap-prev" data-dir="-1"></div>
+        <div class="tap-zone tap-center" data-dir="0"></div>
+        <div class="tap-zone tap-next" data-dir="1"></div>
+      </div>
+
+      <footer class="reader-footer" id="reader-footer">
+        <!-- 进度信息不再单独占一行（用户反馈太占高度）。
+             保留为读屏软件可读的状态播报，视觉上不占空间。 -->
+        <div class="sr-only" aria-live="polite">
+          <span id="progress-text-bottom">0%</span>
+        </div>
+
+        <!-- 第一行：上一章 ｜ 进度条 ｜ 下一章 -->
+        <div class="foot-nav">
+          <button id="btn-prev-chapter" class="nav-text-btn">上一章</button>
+          <input type="range" id="chapter-slider" class="chapter-slider"
+                 min="0" max="0" value="0" step="1" aria-label="阅读进度">
+          <button id="btn-next-chapter" class="nav-text-btn">下一章</button>
+        </div>
+
+        <!-- 第二行：目录 / 白天 / 阅读设置 -->
+        <div class="foot-tools">
+          <button id="btn-toc" class="tool-btn" aria-label="目录">
+            <span data-icon="toc" data-icon-class="tool-icon"></span>
+            <span>目录</span>
+          </button>
+          <button id="btn-daynight" class="tool-btn" aria-label="切换白天/夜间">
+            <span data-icon="sun" data-icon-class="tool-icon icon-sun"></span>
+            <span data-icon="moon" data-icon-class="tool-icon icon-moon"></span>
+            <span id="daynight-label">白天</span>
+          </button>
+          <button id="btn-reader-settings" class="tool-btn" aria-label="阅读设置">
+            <span data-icon="settings" data-icon-class="tool-icon"></span>
+            <span>阅读设置</span>
+          </button>
+        </div>
+      </footer>
+
+      <!-- 阅读器菜单面板 -->
+      <div class="reader-menu" id="reader-menu" style="display:none">
+        <div class="menu-overlay"></div>
+        <div class="menu-dialog">
+          <h3>阅读设置</h3>
+          <div class="menu-section">
+            <label>翻页方式</label>
+            <div class="theme-options" id="pagemode-options">
+              <button class="theme-btn mode-btn active" data-mode="paged">左右翻页</button>
+              <button class="theme-btn mode-btn" data-mode="scroll">上下滚动</button>
+            </div>
+          </div>
+          <!-- 翻页动画（由 js/reader.js 接管，样式见 css/reader.css） -->
+          <div class="menu-section">
+            <label>翻页动画</label>
+            <div class="theme-options" id="anim-options">
+              <button class="theme-btn anim-btn" data-anim="slide">平移</button>
+              <button class="theme-btn anim-btn active" data-anim="cover">覆盖</button>
+              <button class="theme-btn anim-btn" data-anim="flip">仿真</button>
+              <button class="theme-btn anim-btn" data-anim="none">无</button>
+            </div>
+          </div>
+          <div class="menu-section">
+            <label>字号</label>
+            <input type="range" id="font-size-slider" min="14" max="28" value="18">
+            <span id="font-size-label">18px</span>
+          </div>
+          <div class="menu-section">
+            <label>背景</label>
+            <div class="theme-options" id="theme-options">
+              <button class="theme-btn active" data-theme="warm">暖黄</button>
+              <button class="theme-btn" data-theme="white">纯白</button>
+              <button class="theme-btn" data-theme="dark">夜间</button>
+              <button class="theme-btn" data-theme="green">护眼绿</button>
+            </div>
+          </div>
+          <div class="menu-section">
+            <label>行间距</label>
+            <input type="range" id="line-height-slider" min="1.4" max="2.8" step="0.2" value="1.8">
+            <span id="line-height-label">1.8</span>
+          </div>
+          <button class="btn-close" id="btn-menu-close">关闭</button>
+        </div>
+      </div>
+
+      <!-- 目录 / 书摘 弹窗 -->
+      <div class="toc-panel" id="toc-panel" style="display:none">
+        <div class="toc-overlay" id="toc-overlay"></div>
+        <div class="toc-drawer">
+          <div class="toc-head">
+            <div class="toc-cover" id="toc-cover" data-icon="book" data-icon-size="28"></div>
+            <div class="toc-book-title" id="toc-book-title"></div>
+          </div>
+
+          <div class="toc-tabs" id="toc-tabs">
+            <button class="toc-tab active" data-tab="chapters">目录</button>
+            <button class="toc-tab" data-tab="marks">书摘</button>
+          </div>
+
+          <div class="toc-meta" id="toc-meta">
+            <span id="toc-count">共 0 章</span>
+            <button id="btn-toc-order" class="toc-order-btn"><span data-icon="sort" data-icon-size="15"></span><span id="toc-order-label">倒序</span></button>
+          </div>
+
+          <div class="toc-list" id="toc-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 书签页面 -->
+    <div id="page-bookmarks" class="page">
+      <header class="shelf-header">
+        <button id="btn-bookmarks-back" class="btn-icon back-text-btn"><span data-icon="arrowLeft" data-icon-size="18"></span><span>返回</span></button>
+        <h1><span class="brand-mark" data-icon="bookmark" data-icon-size="19"></span><span>书签</span></h1>
+      </header>
+      <div class="bookmark-list" id="bookmark-list">
+        <div class="empty-state">
+          <p>暂无书签</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS 库（本地自托管，无需外网） -->
+  <script src="./lib/jszip.min.js"></script>
+  <script src="./lib/pdf.min.js"></script>
+  <script src="./lib/mammoth.browser.min.js"></script>
+
+  <!-- 应用脚本（icons.js 必须最先加载：其它脚本会用到 icon()） -->
+  <script src="./js/icons.js"></script>
+  <script src="./js/storage.js"></script>
+  <script src="./js/parser.js"></script>
+  <script src="./js/shelf.js"></script>
+  <script src="./js/reader.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

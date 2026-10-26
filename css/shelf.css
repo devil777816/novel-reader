@@ -1,0 +1,529 @@
+/* ========== 书架页面 ========== */
+.shelf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  padding-top: calc(12px + var(--safe-top));
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.shelf-header h1 {
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 有书签时的小红点提示 */
+.btn-icon.has-badge {
+  position: relative;
+}
+
+.btn-icon.has-badge::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e05252;
+}
+
+/* ========== 搜索栏 ========== */
+.search-bar {
+  display: flex;
+  align-items: center;
+  margin: 12px 16px;
+  position: relative;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 11px 40px 11px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  background: var(--bg-card);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.search-bar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.btn-clear {
+  position: absolute;
+  right: 12px;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 50%;
+}
+
+/* ========== 分类标签 ========== */
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cat-tab {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.cat-tab.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.cat-tab.custom-cat {
+  /* 动态添加的分类标签 */
+}
+
+/* ========== 排序方式（#sort-tabs，按钮由 index.html 提供） ========== */
+.sort-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0 16px 12px;
+  padding: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  box-shadow: var(--shadow);
+}
+
+.sort-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sort-btn {
+  flex: 1 0 auto;
+  padding: 7px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sort-btn:active {
+  color: var(--text);
+}
+
+.sort-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+/* ========== 书籍网格 ========== */
+.book-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
+  gap: 12px;
+  align-content: start;
+  -webkit-overflow-scrolling: touch;
+  /* 滚到顶继续下拉时不要把过卷传给文档，否则会触发 Safari 下拉刷新 */
+  overscroll-behavior: contain;
+}
+
+.book-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 14px 12px 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .book-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow);
+  }
+}
+
+.book-card:active {
+  transform: scale(0.96);
+}
+
+.book-cover {
+  position: relative;
+  width: 64px;
+  height: 86px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 封面是强调色区域，图标统一用白色，深浅主题下都清晰 */
+  color: #fff;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, #4fa595, #2c7568);
+}
+
+/* 书脊高光 */
+.book-cover::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 0;
+}
+
+.book-cover svg {
+  width: 26px;
+  height: 26px;
+  position: relative;
+  z-index: 1;
+}
+
+.book-cover.txt  { background: linear-gradient(135deg, #4fa595, #2c7568); }
+.book-cover.epub { background: linear-gradient(135deg, #7d9fb0, #4d6f80); }
+.book-cover.pdf  { background: linear-gradient(135deg, #d1706b, #a3453f); }
+.book-cover.docx { background: linear-gradient(135deg, #6f9ed6, #43689f); }
+.book-cover.unknown { background: linear-gradient(135deg, #9aa3a8, #666f75); }
+
+.book-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+.book-author {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-favorite {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: flex;
+  line-height: 0;
+  color: var(--favorite);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.book-favorite svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ========== 卡片阅读进度 ========== */
+/* margin-top:auto 让进度条贴齐卡片底部，同一行的卡片进度条彼此对齐 */
+.book-progress {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.book-progress-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.book-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-light), var(--accent));
+  transition: width 0.35s ease;
+}
+
+.book-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+.book-progress-icon {
+  display: inline-flex;
+  line-height: 0;
+}
+
+.book-progress-icon svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* 未读：空轨道 + 弱化文字（只弱化轨道，文字保持可读对比度） */
+.book-progress.is-unread .book-progress-track {
+  opacity: 0.6;
+}
+
+.book-progress.is-unread .book-progress-meta {
+  color: var(--text-secondary);
+}
+
+/* 进行中：文字用强调色 */
+.book-progress.is-reading .book-progress-meta {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* 已读完：整条变绿 + 对勾 */
+.book-progress.is-finished .book-progress-fill {
+  background: var(--success);
+}
+
+.book-progress.is-finished .book-progress-meta {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ========== 导入面板 ========== */
+.import-panel {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+
+.import-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+}
+
+.import-dialog {
+  position: relative;
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  padding-bottom: calc(32px + var(--safe-bottom));
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.import-dialog h3 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.import-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.import-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  font-size: 1rem;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.import-btn:active {
+  background: var(--bg);
+}
+
+.import-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+/* ========== 右键菜单 ========== */
+.context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+
+/* 长按书籍卡片弹出的操作菜单。
+   位置由 JS 算（贴在卡片正下方，放不下翻到上方，并夹在屏幕内），
+   这里只管外观。 */
+.context-menu {
+  position: fixed;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px;
+  min-width: 152px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(31, 41, 37, 0.16), 0 1px 3px rgba(31, 41, 37, 0.10);
+  animation: contextMenuIn 0.14s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes contextMenuIn {
+  from { opacity: 0; transform: translateY(-5px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* 小箭头：指向被长按的那张卡片。--arrow-x 由 JS 写入 */
+.context-menu.has-arrow::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: var(--arrow-x, 24px);
+  width: 10px;
+  height: 10px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: translateX(-50%) rotate(45deg);
+  border-top-left-radius: 2px;
+}
+
+/* 菜单翻到卡片上方时，箭头要相应地跑到下边 */
+.context-menu.has-arrow.above::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: var(--arrow-x, 24px);
+  width: 10px;
+  height: 10px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: translateX(-50%) rotate(45deg);
+  border-bottom-right-radius: 2px;
+}
+
+.context-menu-item {
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--text);
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.context-menu-item svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.context-menu-item:active {
+  background: var(--accent-soft);
+}
+
+/* ========== 导入进度 ========== */
+.import-progress {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--track);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-light), var(--accent));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+/* 导入进度文字：真实元素是 index.html 里的 <p id="progress-text">，js/shelf.js 也用它。
+   （这里原先的选择器名多写了 "import-" 前缀，是死选择器，样式从未生效，已改为真实 id） */
+#progress-text {
+  text-align: center;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  color: var(--text-secondary);
+}

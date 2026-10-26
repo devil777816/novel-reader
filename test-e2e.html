@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>E2E 测试</title>
+<style>
+  body { font-family: monospace; padding: 16px; background:#111; color:#eee; }
+  .pass { color:#4ade80; }
+  .fail { color:#f87171; font-weight:bold; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h2>端到端测试结果</h2>
+<pre id="out">运行中...</pre>
+<iframe id="app" src="./index.html" style="width:390px;height:844px;border:1px solid #444;margin-top:12px"></iframe>
+<script>
+const out = document.getElementById('out');
+const lines = [];
+let pass = 0, fail = 0;
+
+function ok(name, cond, extra) {
+  if (cond) { lines.push('  [PASS] ' + name); pass++; }
+  else { lines.push('  [FAIL] ' + name + (extra ? ' -> ' + extra : '')); fail++; }
+}
+
+function report() {
+  lines.push('');
+  lines.push('========== 通过 ' + pass + ' 项 / 失败 ' + fail + ' 项 ==========');
+  out.textContent = lines.join('\n');
+  out.setAttribute('data-done', '1');
+  out.setAttribute('data-pass', String(pass));
+  out.setAttribute('data-fail', String(fail));
+}
+
+const iframe = document.getElementById('app');
+
+iframe.addEventListener('load', () => {
+  setTimeout(runTests, 2500);
+});
+
+function runTests() {
+  let W;
+  try {
+    W = iframe.contentWindow;
+    lines.push('=== 1. 应用启动 ===');
+    ok('iframe 可访问', !!W);
+    ok('全局函数 initApp 已加载', typeof W.initApp === 'function');
+    ok('全局函数 openDB 已加载', typeof W.openDB === 'function');
+    ok('全局函数 parseTxt 已加载', typeof W.parseTxt === 'function');
+    ok('全局函数 navigateTo 已加载', typeof W.navigateTo === 'function');
+    ok('全局函数 renderBooks 已加载', typeof W.renderBooks === 'function');
+    ok('全局函数 loadBook 已加载', typeof W.loadBook === 'function');
+
+    lines.push('');
+    lines.push('=== 2. 第三方库加载 ===');
+    ok('JSZip 已加载', typeof W.JSZip === 'function' || typeof W.JSZip === 'object');
+    ok('pdfjsLib 已加载', typeof W.pdfjsLib === 'object' && !!W.pdfjsLib);
+    ok('mammoth 已加载', typeof W.mammoth === 'object' && !!W.mammoth);
+
+    lines.push('');
+    lines.push('=== 3. pdf.js worker 配置 ===');
+    const ws = W.pdfjsLib && W.pdfjsLib.GlobalWorkerOptions && W.pdfjsLib.GlobalWorkerOptions.workerSrc;
+    ok('workerSrc 已设置', !!ws, String(ws));
+    ok('workerSrc 指向本地', String(ws).indexOf('./lib/pdf.worker.min.js') === 0, String(ws));
+
+    lines.push('');
+    lines.push('=== 4. 页面结构 ===');
+    const doc = W.document;
+    ok('书架页存在且激活', !!doc.getElementById('page-shelf') && doc.getElementById('page-shelf').classList.contains('active'));
+    ok('阅读器页存在', !!doc.getElementById('page-reader'));
+    ok('书签页存在', !!doc.getElementById('page-bookmarks'));
+    ok('导入面板存在', !!doc.getElementById('import-panel'));
+    ok('书签按钮存在', !!doc.getElementById('btn-bookmarks'));
+    ok('ZIP 按钮是 label（可点击）', doc.getElementById('btn-zip') && doc.getElementById('btn-zip').tagName === 'LABEL');
+
+    lines.push('');
+    lines.push('=== 5. 初始化副作用 ===');
+    const grid = doc.getElementById('book-grid');
+    ok('书架已渲染（非初始骨架）', grid && grid.children.length > 0, grid ? grid.children.length + ' 个子元素' : 'null');
+    ok('空书架提示已显示', grid && grid.textContent.indexOf('书架空空如也') !== -1);
+    ok('主题类已应用', /theme-/.test(doc.body.className), doc.body.className);
+
+    lines.push('');
+    lines.push('=== 6. 核心逻辑在真实环境运行 ===');
+    ok('格式识别 txt', W.getFileFormat('a.txt') === 'txt');
+    ok('格式识别 epub', W.getFileFormat('a.epub') === 'epub');
+    ok('书名提取', W.extractTitle('【精校】三体.txt') === '三体', W.extractTitle('【精校】三体.txt'));
+    ok('HTML 转义生效', W.escapeHtml('<img src=x onerror=1>').indexOf('&lt;') !== -1);
+
+    lines.push('');
+    lines.push('=== 7. 页面路由 ===');
+    try {
+      W.navigateTo('bookmarks');
+      ok('可切换到书签页', doc.getElementById('page-bookmarks').classList.contains('active'));
+      W.navigateTo('shelf');
+      ok('可切回书架页', doc.getElementById('page-shelf').classList.contains('active'));
+    } catch (e) {
+      ok('页面路由无异常', false, e.message);
+    }
+
+    lines.push('');
+    lines.push('=== 8. IndexedDB ===');
+    ok('IndexedDB 可用（真实读写见下方）', typeof W.indexedDB === 'object' && !!W.indexedDB);
+
+    // 异步：真实写入读出
+    (async () => {
+      try {
+        const id = W.generateId();
+        const testBook = {
+          id, title: 'E2E测试书', author: '', format: 'txt',
+          fileData: new Blob(['第一章 测试\n正文内容'], { type: 'text/plain' }),
+          favorite: false, category: '', addedAt: Date.now(),
+          lastReadAt: null, progress: 0, currentChapter: 0
+        };
+        await W.saveBook(testBook);
+        const got = await W.getBook(id);
+        ok('书籍可写入并读回', !!got && got.title === 'E2E测试书');
+
+        const bm = {
+          id: W.generateId(), bookId: id, bookTitle: 'E2E测试书',
+          chapterIndex: 0, chapterTitle: '第一章', scrollPosition: 0,
+          preview: '测试', createdAt: Date.now()
+        };
+        await W.saveBookmark(bm);
+        const bms = await W.getBookmarks(id);
+        ok('书签可写入并读回', bms.length === 1 && bms[0].bookTitle === 'E2E测试书');
+
+        // 清理
+        await W.deleteBook(id);
+        const after = await W.getBook(id);
+        ok('删除书籍成功', !after);
+        const bmsAfter = await W.getBookmarks(id);
+        ok('删除书籍时级联删除书签', bmsAfter.length === 0);
+
+        // 真实解析 TXT
+        const fakeFile = { text: async () => '第一章 甲\n内容一\n第二章 乙\n内容二' };
+        const parsed = await W.parseTxt(fakeFile);
+        ok('真实环境解析 TXT 分章', parsed.chapters.length === 2, parsed.chapters.length + ' 章');
+
+        // 真实解压 ZIP
+        const zip = new W.JSZip();
+        zip.file('小说A.txt', '第一章 测试\n内容');
+        zip.file('小说B.txt', '没有任何章节标记的文本');
+        zip.file('封面.png', 'not-a-real-png');
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const zipFile = new File([blob], 'books.zip', { type: 'application/zip' });
+        const extracted = await W.extractZip(zipFile, () => {});
+        ok('真实解压 ZIP 并筛选小说', extracted.length === 2, '解出 ' + extracted.length + ' 个可读文件');
+        ok('ZIP 中非小说文件被过滤', extracted.every(f => /\.txt$/.test(f.name)));
+
+        /* ===== 9. 左右翻页（在真实浏览器布局下验证）=====
+           这一段是 jsdom 测不了的：多列排版需要浏览器的布局引擎。
+           在这里能真正验证"每页是否正好一屏"。 */
+        lines.push('');
+        lines.push('=== 9. 左右翻页（真实布局） ===');
+
+        const paras = [];
+        for (let i = 0; i < 80; i++) {
+          paras.push('第' + (i + 1) + '段：这是一段用于测试分页的正文内容，需要足够长才能撑出多页来。');
+        }
+        const pagedBook = {
+          id: W.generateId(), title: '分页测试书', format: 'txt',
+          fileData: new File(['第一章 分页测试\n' + paras.join('\n')], 'p.txt', { type: 'text/plain' }),
+          currentChapter: 0, currentPage: 0
+        };
+
+        W.navigateTo('reader');
+        await W.loadBook(pagedBook);
+        await new Promise(r => setTimeout(r, 500));
+
+        const inner = doc.getElementById('paged-inner');
+        const view = doc.getElementById('reader-content');
+        const footer = () => doc.getElementById('progress-text-bottom').textContent;
+
+        ok('进入翻页模式', view.classList.contains('paged'));
+        ok('视口尺寸有效', view.clientWidth > 100 && view.clientHeight > 100,
+           view.clientWidth + 'x' + view.clientHeight);
+        ok('正文已排成多列', inner.style.columnWidth !== '', inner.style.columnWidth);
+        ok('内容总宽超过一屏（说明确实分成多页）',
+           inner.scrollWidth > view.clientWidth,
+           'scrollWidth=' + inner.scrollWidth + ' vs clientWidth=' + view.clientWidth);
+        ok('底部显示页码', /\/\d+页/.test(footer()), footer());
+
+        const tfBefore = inner.style.transform;
+        await W.turnPage(1);
+        await new Promise(r => setTimeout(r, 350));
+        ok('翻页后位置发生变化', inner.style.transform !== tfBefore,
+           tfBefore + ' -> ' + inner.style.transform);
+
+        await W.turnPage(-1);
+        await new Promise(r => setTimeout(r, 350));
+        ok('能翻回上一页', inner.style.transform === tfBefore, inner.style.transform);
+
+        await W.setPageMode('scroll');
+        await new Promise(r => setTimeout(r, 250));
+        ok('切到上下滚动模式', !view.classList.contains('paged'));
+        ok('滚动模式下正文可滚动', getComputedStyle(view).overflowY !== 'hidden',
+           getComputedStyle(view).overflowY);
+
+        await W.setPageMode('paged');
+        await new Promise(r => setTimeout(r, 350));
+        ok('切回左右翻页模式', view.classList.contains('paged'));
+
+        W.navigateTo('shelf');
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) {
+        ok('IndexedDB / 解析流程无异常', false, e.message);
+      }
+      report();
+    })();
+
+  } catch (e) {
+    lines.push('[FATAL] ' + e.message);
+    fail++;
+    report();
+  }
+}
+
+// 兜底：30 秒后无论如何输出结果
+setTimeout(() => {
+  if (!out.getAttribute('data-done')) {
+    lines.push('[TIMEOUT] 测试未在预期时间完成');
+    report();
+  }
+}, 30000);
+</script>
+</body>
+</html>

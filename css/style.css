@@ -1,0 +1,287 @@
+/* ========== 全局样式 ========== */
+/* 配色：暖中性纸感底 + 墨色文字 + 玉青强调色（取代原来偏土的棕黄）。
+   强调色同时会被用作"文字色"（如导入按钮）和"按钮底色"（如分类/排序选中），
+   所以额外提供 --accent-contrast 作为强调色底上的前景色。 */
+:root {
+  --bg: #f4f1ec;
+  --bg-card: #fffdfa;
+  --text: #2f3237;
+  --text-secondary: #767065;
+  --border: #e2dcd2;
+
+  /* 强调色 */
+  --accent: #2f7d70;
+  --accent-light: #46a08f;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(47, 125, 112, 0.12);
+
+  /* 状态色：已读完 / 收藏星标（绿值与金值都取到 ≥3:1 的图形/文字对比度） */
+  --success: #1f7a3d;
+  --favorite: #c9861a;
+
+  /* 进度条轨道 */
+  --track: rgba(47, 125, 112, 0.14);
+
+  --shadow: 0 1px 2px rgba(31, 41, 37, 0.05), 0 4px 14px rgba(31, 41, 37, 0.07);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --radius: 14px;
+}
+
+/* 深色主题补全。
+   reader.css 里的 body.theme-dark 只覆盖了 --bg / --bg-card / --text /
+   --text-secondary / --border，这里的取值它没有声明，所以不会互相覆盖。
+   深色下强调色要变亮（浅色强调色在深底上才够对比度），并且底上的前景色要反过来用深色。 */
+body.theme-dark {
+  --accent: #63c7b4;
+  --accent-light: #7fd8c7;
+  --accent-contrast: #10201d;
+  --accent-soft: rgba(99, 199, 180, 0.18);
+  --success: #5cc98a;
+  --favorite: #f0c04a;
+  --track: rgba(255, 255, 255, 0.16);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  /* 长按不弹出"拷贝/分享"菜单，更接近原生 App */
+  -webkit-touch-callout: none;
+
+  /* iOS Safari 从 iOS 10 起会忽略 viewport 的 user-scalable=no，
+     所以"连点两次放大"仍然会发生。touch-action: manipulation 是官方的解法：
+     它在保留滚动与双指缩放的同时，关掉"双击缩放"。 */
+  touch-action: manipulation;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+  /* 阻止"下拉刷新"：不让滚动过卷传递给文档 */
+  overscroll-behavior: none;
+}
+
+/* 把 body 固定住：文档本身不可滚动，iOS Safari 就无法触发下拉刷新。
+   应用内所有滚动都发生在自己的容器里（书架网格、正文、目录列表），不受影响。 */
+body {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ========== 页面切换 ========== */
+.page {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+
+.page.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ========== 通用按钮 ========== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-icon {
+  font-size: 1.4rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.btn-icon:active {
+  background: var(--accent-soft);
+  transform: scale(0.94);
+}
+
+/* ========== 图标尺寸（图标本体见 js/icons.js） ==========
+   以前界面图标大多是 emoji，各机型由各自的字体渲染，形状粗细都不一致；
+   现在统一成 currentColor 描边 SVG。
+
+   尺寸策略：**用 em 跟随所在元素的 font-size**，
+   于是原有的 font-size 定义（.btn-icon / .btn-back / .tool-btn …）自动继续生效，
+   不需要为每个位置再写一遍像素值。
+   data-icon-size 给出的 width/height 属性只作初值，CSS 在此处覆盖它。 */
+.btn-icon svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+}
+
+/* 书架标题左侧的小标记 */
+.shelf-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+}
+
+.brand-mark svg {
+  width: 1.05em;
+  height: 1.05em;
+  display: block;
+}
+
+/* 分类标签里的小图标 */
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 5px;
+  vertical-align: -0.12em;
+}
+
+.tab-icon svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+/* 导入面板两个按钮 */
+.import-btn-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.import-btn-icon svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+  color: var(--accent);
+}
+
+/* 书签页左上角的「← 返回」：图标 + 文字 */
+.back-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.back-text-btn svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+.btn-close {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 32px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.btn-close:active {
+  filter: brightness(1.12);
+  transform: scale(0.97);
+}
+
+/* ========== 空状态 ========== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  grid-column: 1 / -1;
+}
+
+.empty-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 4rem;
+  color: var(--text-secondary);
+}
+
+.empty-icon svg {
+  width: 56px;
+  height: 56px;
+  opacity: 0.5;
+}
+
+.empty-hint {
+  font-size: 0.9rem;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+/* ========== Toast 提示 ========== */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  z-index: 300;
+  max-width: 80vw;
+  text-align: center;
+  animation: toastInOut 2s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes toastInOut {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}

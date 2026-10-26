@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>图标预览 · 纯净阅读</title>
+<style>
+  :root {
+    --bg:#f4f1ec; --bg-card:#fffdfa; --text:#2f3237; --text-secondary:#767065;
+    --border:#e2dcd2; --accent:#2f7d70; --accent-light:#46a08f;
+    --accent-contrast:#fff; --accent-soft:rgba(47,125,112,.12); --radius:14px;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:18px 16px 40px; background:var(--bg); color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  .sub { color:var(--text-secondary); font-size:.82rem; margin:0 0 20px; }
+  h2 { font-size:.9rem; color:var(--text-secondary); font-weight:600;
+       margin:26px 0 10px; text-transform:uppercase; letter-spacing:.06em; }
+  .card { background:var(--bg-card); border:1px solid var(--border);
+          border-radius:var(--radius); padding:14px; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .cell { display:flex; flex-direction:column; align-items:center; gap:7px;
+          padding:12px 4px; border-radius:10px; }
+  .cell span { font-size:.62rem; color:var(--text-secondary); word-break:break-all; text-align:center; }
+  .cell svg { color:var(--text); }
+  .row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .btn-icon { font-size:1.4rem; padding:8px 12px; border:0; background:transparent;
+              color:var(--text); border-radius:8px; }
+  .btn-icon svg { width:1em; height:1em; display:block; }
+  .btn-back { font-size:1.7rem; color:var(--accent); padding:0 10px 3px;
+              display:inline-flex; align-items:center; border:0; background:transparent; }
+  .btn-back svg { width:1em; height:1em; stroke-width:2.2; display:block; }
+  .cat-tab { flex:0 0 auto; padding:6px 16px; border-radius:999px; font-size:.9rem;
+             background:var(--bg-card); border:1px solid var(--border); color:var(--text); }
+  .cat-tab.active { background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); font-weight:600; }
+  .tab-icon { display:inline-flex; align-items:center; margin-right:5px; vertical-align:-.12em; }
+  .tab-icon svg { width:13px; height:13px; display:block; }
+  .import-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:16px;
+                border:2px dashed var(--border); border-radius:12px; font-size:.9rem;
+                background:transparent; color:var(--text); width:100%; }
+  .import-btn-icon svg { width:19px; height:19px; display:block; color:var(--accent); }
+  .toc-order-btn { font-size:.78rem; color:var(--accent); padding:4px 10px; border-radius:14px;
+                   background:var(--accent-soft); display:inline-flex; align-items:center; gap:5px;
+                   border:0; }
+  .toc-order-btn svg { width:14px; height:14px; display:block; }
+  .ctx { background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+         padding:6px; width:190px; }
+  .context-menu-item { display:flex; align-items:center; gap:11px; width:100%; padding:10px 14px;
+                       border:0; background:transparent; border-radius:8px; font-size:.9rem;
+                       color:var(--text); text-align:left; }
+  .context-menu-item svg { width:17px; height:17px; display:block; flex-shrink:0; color:var(--text-secondary); }
+  .toc-cover { width:42px; height:56px; border-radius:6px; display:flex; align-items:center;
+               justify-content:center; color:#fff;
+               background:linear-gradient(140deg,var(--accent-light),var(--accent)); }
+  .toc-cover svg { width:26px; height:26px; display:block; }
+  .bookmark-delete { font-size:1.1rem; padding:4px 8px; color:#c75b5b; border:0; background:transparent; }
+  .bookmark-delete svg { width:15px; height:15px; display:block; }
+  .back-text-btn { display:inline-flex; align-items:center; gap:4px; font-size:.95rem;
+                   color:var(--accent); border:0; background:transparent; }
+  .back-text-btn svg { width:17px; height:17px; display:block; }
+  .brand-mark { display:inline-flex; align-items:center; color:var(--accent); }
+  .brand-mark svg { width:1.05em; height:1.05em; display:block; }
+  .shelf-header { display:flex; align-items:center; justify-content:space-between; }
+  .shelf-header h1 { display:flex; align-items:center; gap:6px; font-size:1.25rem; margin:0; }
+  .tool-row { display:flex; gap:18px; justify-content:center; }
+  .tool-btn { display:flex; flex-direction:column; align-items:center; gap:6px;
+              font-size:.74rem; color:var(--text); border:0; background:transparent; padding:6px 2px; }
+  .tool-icon { width:20px; height:20px; display:block; }
+  .dark { background:#1b1e22; color:#d8d5d0; border-color:#33383e; }
+  .dark .sub, .dark small { color:#9aa0a6; }
+  .dark .cell svg { color:#d8d5d0; }
+  .dark .cat-tab { background:#24282d; color:#d8d5d0; border-color:#33383e; }
+  .dark .cat-tab.active { background:var(--accent); color:#fff; }
+  .sizes { display:flex; align-items:flex-end; gap:16px; }
+  .sizes > div { text-align:center; }
+  small { color:var(--text-secondary); font-size:.7rem; }
+</style>
+</head>
+<body>
+<h1>图标预览</h1>
+<p class="sub">全部替换成了统一的矢量图标（原先是一批 emoji）。下面的尺寸/颜色与实际界面一致。<br>
+这个页面只用来检查观感，不属于应用本体。</p>
+
+<h2>全部图标</h2>
+<div class="card"><div class="grid" id="all"></div></div>
+
+<h2>不同尺寸（描边会自动变细，不会糊）</h2>
+<div class="card">
+  <div class="sizes">
+    <div><div id="s20"></div><small>20px</small></div>
+    <div><div id="s24"></div><small>24px</small></div>
+    <div><div id="s32"></div><small>32px</small></div>
+    <div><div id="s48"></div><small>48px</small></div>
+  </div>
+</div>
+
+<h2>实际界面中的样子</h2>
+<div class="card">
+  <div class="shelf-header">
+    <h1><span class="brand-mark" data-icon="library" data-icon-size="21"></span><span>纯净阅读</span></h1>
+    <div class="row">
+      <button class="btn-icon" data-icon="bookmark" data-icon-size="22"></button>
+      <button class="btn-icon" data-icon="import" data-icon-size="22"></button>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <span class="cat-tab active">全部</span>
+    <span class="cat-tab"><span class="tab-icon" data-icon="star" data-icon-size="15"></span>收藏</span>
+    <span class="cat-tab">未分类</span>
+  </div>
+  <div class="row" style="margin-top:16px">
+    <button class="btn-back" data-icon="chevronLeft" data-icon-size="26"></button>
+    <button class="btn-icon" data-icon="bookmark" data-icon-size="21"></button>
+    <button class="btn-icon" data-icon="menu" data-icon-size="22"></button>
+    <button class="back-text-btn"><span data-icon="arrowLeft" data-icon-size="18"></span><span>返回</span></button>
+    <button class="toc-order-btn"><span data-icon="sort" data-icon-size="15"></span><span>倒序</span></button>
+  </div>
+  <div class="row" style="margin-top:16px">
+    <button class="import-btn"><span class="import-btn-icon" data-icon="file" data-icon-size="19"></span>选择文件</button>
+    <button class="import-btn"><span class="import-btn-icon" data-icon="archive" data-icon-size="19"></span>压缩包</button>
+  </div>
+  <div class="row" style="margin-top:16px; align-items:flex-start">
+    <div class="ctx">
+      <button class="context-menu-item"><span data-icon="star" data-icon-size="17"></span><span>收藏</span></button>
+      <button class="context-menu-item"><span data-icon="folder" data-icon-size="17"></span><span>移动到分类</span></button>
+      <button class="context-menu-item"><span data-icon="trash" data-icon-size="17"></span><span>删除</span></button>
+    </div>
+    <div class="toc-cover"><span data-icon="book" data-icon-size="28"></span></div>
+    <button class="bookmark-delete" data-icon="close" data-icon-size="15"></button>
+  </div>
+  <div class="tool-row" style="margin-top:18px">
+    <button class="tool-btn"><span data-icon="toc" data-icon-class="tool-icon"></span><span>目录</span></button>
+    <button class="tool-btn"><span data-icon="sun" data-icon-class="tool-icon icon-sun"></span><span>白天</span></button>
+    <button class="tool-btn"><span data-icon="settings" data-icon-class="tool-icon"></span><span>阅读设置</span></button>
+  </div>
+</div>
+
+<h2>夜间主题（currentColor 会自动跟色）</h2>
+<div class="card dark">
+  <div class="row">
+    <span class="brand-mark" data-icon="library" data-icon-size="21"></span>
+    <button class="btn-icon" data-icon="bookmark" data-icon-size="22" style="color:#d8d5d0"></button>
+    <button class="btn-icon" data-icon="menu" data-icon-size="22" style="color:#d8d5d0"></button>
+    <button class="btn-icon" data-icon="import" data-icon-size="22" style="color:#5fb3a3"></button>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <span class="cat-tab">全部</span>
+    <span class="cat-tab active"><span class="tab-icon" data-icon="star" data-icon-size="15"></span>收藏</span>
+  </div>
+  <div class="tool-row" style="margin-top:16px; justify-content:flex-start">
+    <button class="tool-btn" style="color:#d8d5d0"><span data-icon="toc" data-icon-class="tool-icon"></span><span>目录</span></button>
+    <button class="tool-btn" style="color:#d8d5d0"><span data-icon="moon" data-icon-class="tool-icon icon-moon"></span><span>夜间</span></button>
+    <button class="tool-btn" style="color:#d8d5d0"><span data-icon="settings" data-icon-class="tool-icon"></span><span>阅读设置</span></button>
+  </div>
+</div>
+
+<h2>App 图标（主屏幕）</h2>
+<div class="card row">
+  <img src="../icons/icon-192.png" width="96" height="96" alt="App 图标" style="border-radius:22px">
+  <div>
+    <div><strong>新的</strong>：青绿渐变 + 摊开的书 + 金色书签带，配色取自应用主题</div>
+    <div class="sub" style="margin:4px 0 0">旧的是手绘棕色方块，和现在的主题色对不上</div>
+  </div>
+</div>
+
+<script src="../js/icons.js"></script>
+<script>
+  // 把图标库里所有图标列出来
+  const all = document.getElementById('all');
+  all.innerHTML = Object.keys(ICON_PATHS).map(n =>
+    `<div class="cell">${icon(n, { size: 24 })}<span>${n}</span></div>`).join('');
+
+  // 不同尺寸用同一个图标对比
+  for (const s of [20, 24, 32, 48]) {
+    document.getElementById('s' + s).innerHTML = icon('bookmark', { size: s });
+  }
+
+  initIcons();
+</script>
+</body>
+</html>
